@@ -63,4 +63,10 @@ public class Smartwatch {
     public int[] getLeiturasCadencia() {
         return leiturasCadencia;
     }
+
+    public Smartwatch(int idDispositivo, String identificadorCorredor, int[] leiturasCadencia) {
+        this.idDispositivo = String.valueOf(idDispositivo);
+        this.identificadorCorredor = identificadorCorredor;
+        this.leiturasCadencia = leiturasCadencia;
+    }
 }

@@ -1,0 +1,77 @@
+import csv
+import random
+import math
+
+# Configurações do simulador
+QTD_RELOGIOS = 10
+MINUTOS_CORRIDA = 113  # 1 hora e 52 minutos, baseado no longão do Osmir
+ARQUIVO_SAIDA = "cadencia_sensores.csv"
+
+# Perfil base do Osmir (Relógio 1) baseado no longão Boa Nova -> Entroncamento
+# Cadência média: 151 SPM | Cadência máxima: 162 SPM
+# O perfil do Osmir servirá como um "Pacer" (marcador de ritmo) para gerar os outros atletas
+PERFIL_BASE_OSMIR = {
+    "media_alvo": 151,
+    "variancia": 4,     # Variação natural do corpo (147 a 155 na maior parte do tempo)
+    "fadiga_minuto_inicio": 85, # A partir de 1h25, a cadência começa a cair levemente
+    "quebra_ritmo_prob": 0.02 # Chance de cair a cadência abruptamente (subida/cansaço)
+}
+
+def gerar_dados_simulados():
+    dados_csv = []
+    
+    # Criar 10 perfis de corredores (do Elite ao Amador)
+    perfis = {}
+    for i in range(1, QTD_RELOGIOS + 1):
+        if i == 1:
+            perfis[i] = PERFIL_BASE_OSMIR
+        elif i <= 3:
+            # Elite (Cadência alta e constante, estilo queniano)
+            perfis[i] = {"media_alvo": random.randint(170, 185), "variancia": 2, "fadiga_minuto_inicio": 100, "quebra_ritmo_prob": 0.01}
+        elif i <= 7:
+            # Amadores Avançados (Similares ao Osmir)
+            perfis[i] = {"media_alvo": random.randint(145, 160), "variancia": 5, "fadiga_minuto_inicio": 70, "quebra_ritmo_prob": 0.05}
+        else:
+            # Iniciantes/Cansados (Cadência baixa, muita variação e fadiga cedo)
+            perfis[i] = {"media_alvo": random.randint(130, 140), "variancia": 8, "fadiga_minuto_inicio": 45, "quebra_ritmo_prob": 0.15}
+
+    # Simular a corrida minuto a minuto para todos simultaneamente (como se estivessem na pista)
+    for minuto in range(1, MINUTOS_CORRIDA + 1):
+        for id_relogio in range(1, QTD_RELOGIOS + 1):
+            perfil = perfis[id_relogio]
+            
+            # Base da cadência usando distribuição Gaussiana para ser realista
+            cadencia = random.gauss(perfil["media_alvo"], perfil["variancia"])
+            
+            # Aplicar fator de fadiga (Degradação Biomecânica - o que o seu algoritmo vai caçar)
+            if minuto >= perfil["fadiga_minuto_inicio"]:
+                fator_queda = (minuto - perfil["fadiga_minuto_inicio"]) * 0.15
+                cadencia -= fator_queda
+                
+            # Evento aleatório de "Quebra" (uma subida forte, ou cãibra)
+            if random.random() < perfil["quebra_ritmo_prob"]:
+                cadencia -= random.randint(10, 25)
+                
+            # Arredondar para SPM inteiro e garantir que ninguém morra e pare do nada (min: 100)
+            cadencia_final = max(100, int(round(cadencia)))
+            
+            # Se for o Osmir (Relógio 1) e passar da máxima dele do print, trava em 162
+            if id_relogio == 1 and cadencia_final > 162:
+                cadencia_final = 162
+                
+            dados_csv.append([id_relogio, cadencia_final, minuto])
+            
+    # Embaralhar as linhas para simular a chegada concorrente na rede (não chega tudo em ordem certinha)
+    # Isso forçará o seu servidor a usar as Threads adequadamente
+    random.shuffle(dados_csv)
+    
+    # Escrever no arquivo
+    with open(ARQUIVO_SAIDA, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["id_relogio", "cadencia_spm", "minuto"])
+        writer.writerows(dados_csv)
+        
+    print(f"[{ARQUIVO_SAIDA}] gerado com sucesso! Total de {len(dados_csv)} leituras simuladas.")
+
+if __name__ == "__main__":
+    gerar_dados_simulados()
